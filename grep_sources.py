@@ -27,6 +27,8 @@ canonicals = set()
 
 permission_errors = set()
 
+grep_errors = {}
+
 def add_file(filename):
     try:
         file_modtimes[filename] = os.path.getmtime(filename)
@@ -85,15 +87,15 @@ def add_directory(directory, inode=None):
 
 
 
-def run_grep(cmdline):
+def run_grep(filename, cmdline):
     p = subprocess.Popen(cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf8")
     (out, err) = [x.strip() for x in p.communicate()]
     ret = p.wait()
     if not ret or not err:
         return out
     if err:
-        raise Exception(
-            f'Call to subprocess_check failed with return code {ret}\nStandard error: "{err}"\nStandard out: "{out}"')
+        grep_errors[filename] = err
+        return None
 
 now = time.time()
 
@@ -151,7 +153,7 @@ def main():
         if args.i:
             cmdline.append("-i")
         cmdline += [args.regex, filename]
-        out = run_grep(cmdline)
+        out = run_grep(filename, cmdline)
         if out:
             print(f"{os.path.basename(filename)} {interpret_time(file_modtimes[filename])} ({filename})")
             for line in out.split("\n"):
